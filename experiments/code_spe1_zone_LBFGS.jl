@@ -10,12 +10,6 @@ GLMakie.activate!()
 # --- Controls ---
 const SPE1_WELLS = [:PROD, :INJ]
 
-const SPE1_RATE_REL_FLOOR = 1e-2
-const rate_weight = 1.0
-const bhp_weight = rate_weight
-
-const MIN_MULTIPLIER = 5e-2
-const MAX_MULTIPLIER = 1.5
 const N_REFINEMENTS = 4
 const LBFGS_MAX_ITERS = 40
 
@@ -47,12 +41,6 @@ const PERM_INC_HEADER_LINES = [
 const REF_IDX_TO_PLOT = 3
 const LBFGS_FIRST_REFINEMENT_TO_PLOT = 1
 const LBFGS_LAST_REFINEMENT_TO_PLOT  = 10
-
-const MULTS_LINE_YLABEL = "Permeability multiplier"
-const MULTS_COLORBAR_LABEL = "Permeability multiplier"
-const MULTS_COLORRANGE = (0.02, 1.5)
-const PERM_COLORRANGE = (50.0, 1000.0)
-const RATE_COMPARE_LABEL = "matched"
 
 const ZONING_TECHNIQUES = Dict(
     "sign_uncons" => (
@@ -93,8 +81,8 @@ const ZONING_TECHNIQUES = Dict(
                 K_grads,
                 mults_grads,
                 refinement_step;
-                min_multiplier = MIN_MULTIPLIER,
-                max_multiplier = MAX_MULTIPLIER,
+                min_multiplier = 5e-2,
+                max_multiplier = 1.5,
             ),
     ),
 )
@@ -152,11 +140,11 @@ rate_obs = build_rate_observations(
     step_times     = step_times,
     total_time     = total_time,
     rate_scales    = rate_scales,
-    rate_rel_floor = SPE1_RATE_REL_FLOOR,
-    rate_weight    = rate_weight,
+    rate_rel_floor = 1e-2,
+    rate_weight    = 1.0,
     bhp_scale      = bhp_scale,
-    bhp_rel_floor  = SPE1_RATE_REL_FLOOR,
-    bhp_weight     = bhp_weight,
+    bhp_rel_floor  = 1e-2,
+    bhp_weight     = 1.0,
 )
 set_rate_observations!(LOSS_REGISTRY, rate_obs)
 history_matching_loss = loss_from_registry(LOSS_REGISTRY; mode = :rates)
@@ -213,8 +201,8 @@ optimizer_fn = function (curr_mults, curr_zonation, label, refinement_step)
         curr_mults,
         model_mults,
         history_matching_loss;
-        min_multiplier = MIN_MULTIPLIER,
-        max_multiplier = MAX_MULTIPLIER,
+        min_multiplier = 5e-2,
+        max_multiplier = 1.5,
         max_iters = LBFGS_MAX_ITERS,
         label = label,
         log_path = LBFGS_LOG_FILE,
@@ -285,11 +273,11 @@ ref_label = history.labels[ref_idx]
 ref_nzones = length(history.mults[ref_idx])
 
 plot_epoch_gradients!(mesh, grads, label) = show_epoch_gradients(mesh, grads, label; colormap = :balance)
-plot_multipliers_line!(mults, title) = show_multipliers_line(mults; title = title, ylabel = MULTS_LINE_YLABEL)
-plot_multipliers_3d!(mesh, field, title) = show_multipliers_3d(mesh, field; colormap = cgrad(:Spectral, 256, rev = true), title = title, colorbar_label = MULTS_COLORBAR_LABEL, colorrange = MULTS_COLORRANGE)
-plot_perm_3d!(mesh, field, title) = show_perm_3d(mesh, field; units = :mD, colormap = :viridis, title = title, colorrange = PERM_COLORRANGE)
+plot_multipliers_line!(mults, title) = show_multipliers_line(mults; title = title, ylabel = "Permeability multiplier")
+plot_multipliers_3d!(mesh, field, title) = show_multipliers_3d(mesh, field; colormap = cgrad(:Spectral, 256, rev = true), title = title, colorbar_label = "Permeability multiplier", colorrange = (0.02, 1.5))
+plot_perm_3d!(mesh, field, title) = show_perm_3d(mesh, field; units = :mD, colormap = :viridis, title = title, colorrange = (50.0, 1000.0))
 plot_loss_history!(losses, labels) = show_loss_history(losses, labels)
-plot_rate_comparison!(t_truth, t_matched, curves) = show_rate_comparison(t_truth, t_matched, curves; label = RATE_COMPARE_LABEL)
+plot_rate_comparison!(t_truth, t_matched, curves) = show_rate_comparison(t_truth, t_matched, curves; label = "matched")
 plot_lbfgs_sections!(log_file, history) = begin
     lbfgs_sections = load_lbfgs_sections(log_file)
     isempty(lbfgs_sections.labels) && return @warn "No LBFGS sections found in $(log_file) — run optimization first."

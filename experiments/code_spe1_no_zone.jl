@@ -11,18 +11,7 @@ using GLMakie
 GLMakie.activate!()
 
 # --- Controls ---
-const COLORMAP_GRAD  = :balance
-const COLORMAP_MULTS = :viridis
-
 const SPE1_WELLS = [:PROD, :INJ]
-
-const SPE1_RATE_REL_FLOOR = 1e-2
-const rate_weight = 1.0
-const bhp_weight = rate_weight
-
-# Multipliers bounds (relative)
-const MIN_MULTIPLIER = 5e-2
-const MAX_MULTIPLIER = 1.5
 
 const K_first_layer  = 500.0
 const K_second_layer = 50.0
@@ -43,12 +32,6 @@ const PERM_INC_HEADER_LINES = [
     "-- SPE1 permeability tuned with per-cell L-BFGS (no zonation)",
     "-- Units: milliDarcy, order = I fastest, then J, then K",
 ]
-const LBFGS_FINAL_LABEL = "L-BFGS final"
-const RATE_COMPARE_LABEL = "SPE1 — L-BFGS (no zonation)"
-const RATE_COMPARE_LABEL_NO_ZONE = "No zonation"
-const RATE_COMPARE_LABEL_ZONATION = "Zonation"
-const PERM_TITLE_TEMPLATE = "Permeability field (mD) — %s"
-const PERM_TITLE_FINAL = "Permeability field (mD) — L-BFGS per-cell perm"
 
 # Backward-compatible wrapper: tolerate older compute_auto_scales signatures
 _auto_scales(ws, wells; method = :rms) = try
@@ -79,11 +62,11 @@ rate_obs = build_rate_observations(
     step_times     = step_times,
     total_time     = total_time,
     rate_scales    = rate_scales,
-    rate_rel_floor = SPE1_RATE_REL_FLOOR,
-    rate_weight    = rate_weight,
+    rate_rel_floor = 1e-2,
+    rate_weight    = 1.0,
     bhp_scale      = bhp_scale,
-    bhp_rel_floor  = SPE1_RATE_REL_FLOOR,
-    bhp_weight     = bhp_weight,
+    bhp_rel_floor  = 1e-2,
+    bhp_weight     = 1.0,
 )
 set_rate_observations!(LOSS_REGISTRY, rate_obs)
 
@@ -151,8 +134,8 @@ dopt = setup_reservoir_dict_optimization(prm0, model_mults)
 free_optimization_parameter!(
     dopt,
     "mults";
-    rel_min = MIN_MULTIPLIER,
-    rel_max = MAX_MULTIPLIER,
+    rel_min = 5e-2,
+    rel_max = 1.5,
 )
 
 mults_tuned = optimize_reservoir(
@@ -205,7 +188,7 @@ loss_final, K_grads, mults_grads = redirect_stdout(devnull) do
     end
 end
 
-label_final = LBFGS_FINAL_LABEL
+label_final = "L-BFGS final"
 log_refinement!(history, K_grads, mults, zonation, label_final, loss_final)
 
 # ------------------ VISUALIZATION ------------------
@@ -214,12 +197,12 @@ log_refinement!(history, K_grads, mults, zonation, label_final, loss_final)
 
 last_epoch = history_length(history)
 
-show_epoch_gradients(rmesh, history.grads[last_epoch], history.labels[last_epoch]; colormap = COLORMAP_GRAD)
+show_epoch_gradients(rmesh, history.grads[last_epoch], history.labels[last_epoch]; colormap = :balance)
 show_multipliers_line(history.mults[last_epoch]; title = history.labels[last_epoch])
 show_multipliers_3d(
     rmesh,
     multiplier_field_for_refinement(history, last_epoch);
-    colormap = COLORMAP_MULTS,
+    colormap = :viridis,
 )
 show_loss_history(history.losses, history.labels; technique_name = REFINEMENT_NAME)
 show_perm_3d(
@@ -232,15 +215,15 @@ show_perm_3d(
         units = :mD,
     );
     units = :mD,
-    colormap = COLORMAP_MULTS,
-    title = @sprintf(PERM_TITLE_TEMPLATE, history.labels[last_epoch]),
+    colormap = :viridis,
+    title = @sprintf("Permeability field (mD) — %s", history.labels[last_epoch]),
 )
 show_perm_3d(
     rmesh,
     final_perm_mD;
     units = :mD,
-    colormap = COLORMAP_MULTS,
-    title = PERM_TITLE_FINAL,
+    colormap = :viridis,
+    title = "Permeability field (mD) — L-BFGS per-cell perm",
 )
 
 
@@ -252,7 +235,7 @@ show_rate_comparison(
     time_truth,
     time_matched,
     curves_no_zone;
-    label = RATE_COMPARE_LABEL,
+    label = "SPE1 — L-BFGS (no zonation)",
 )
 
 zonation_data = load_zonation_rate_curves(SPE1_ZONE_RATE_CURVES_FILE)
@@ -263,7 +246,7 @@ else
         time_truth,
         curves_no_zone,
         zonation_data;
-        label_no_zone = RATE_COMPARE_LABEL_NO_ZONE,
-        label_zonation = RATE_COMPARE_LABEL_ZONATION,
+        label_no_zone = "No zonation",
+        label_zonation = "Zonation",
     )
 end
