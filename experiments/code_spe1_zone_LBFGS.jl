@@ -8,14 +8,7 @@ using GLMakie
 GLMakie.activate!()
 
 # --- Controls ---
-const COLORMAP_GRAD  = :balance
-const COLORMAP_MULTS = :viridis
-const COLORMAP_MULTS_3D = cgrad(:Spectral, 256, rev = true)
-
 const SPE1_WELLS = [:PROD, :INJ]
-const loss_mode = :rates
-const scale_mode = :auto_rms
-const bhp_scale_mode = :auto
 
 const SPE1_RATE_REL_FLOOR = 1e-2
 const rate_weight = 1.0
@@ -23,7 +16,7 @@ const bhp_weight = rate_weight
 
 const MIN_MULTIPLIER = 5e-2
 const MAX_MULTIPLIER = 1.5
-const N_REFINEMENTS = 3
+const N_REFINEMENTS = 4
 const LBFGS_MAX_ITERS = 40
 
 const ZONING_TECHNIQUE_KEY = "sign_uncons"
@@ -41,7 +34,7 @@ const K_third_layer_guess  = 1000.0
 const LAYER_LABELS = ("first", "second", "third")
 
 const LBFGS_LOG_DIR  = joinpath(@__DIR__, "logs")
-const SPE1_LOG_TAG = "$(scale_mode)_$(loss_mode)_$(bhp_scale_mode)"
+const SPE1_LOG_TAG = "auto_rms_rates_auto"
 const LBFGS_LOG_FILE = joinpath(LBFGS_LOG_DIR, "spe1_zone_LBFGS_lbfgs_$(SPE1_LOG_TAG)_$(REFINEMENT_KEY).csv")
 const LBFGS_LOG_HEADER = "L-BFGS iteration log for spe1_zone_LBFGS.jl"
 const RATE_CURVES_FILE = joinpath(LBFGS_LOG_DIR, "spe1_zone_rate_curves_$(SPE1_LOG_TAG)_$(REFINEMENT_KEY).csv")
@@ -51,7 +44,7 @@ const PERM_INC_HEADER_LINES = [
     "-- Units: milliDarcy, order = I fastest, then J, then K",
 ]
 
-const REF_IDX_TO_PLOT = 7
+const REF_IDX_TO_PLOT = 3
 const LBFGS_FIRST_REFINEMENT_TO_PLOT = 1
 const LBFGS_LAST_REFINEMENT_TO_PLOT  = 10
 
@@ -60,13 +53,6 @@ const MULTS_COLORBAR_LABEL = "Permeability multiplier"
 const MULTS_COLORRANGE = (0.02, 1.5)
 const PERM_COLORRANGE = (50.0, 1000.0)
 const RATE_COMPARE_LABEL = "matched"
-
-const LABEL_ZONES_TEMPLATE = "%s (%d zones)"
-const TITLE_MULTS_PER_ZONE_TEMPLATE = "Multipliers per zone — %s (%d zones)"
-const TITLE_MULTS_PER_CELL_TEMPLATE = "Multipliers per cell — %s (%d zones)"
-const TITLE_PERM_TEMPLATE = "Permeability field (mD) - %s"
-const TITLE_PERM_TRUTH = "Permeability field (mD) - truth"
-const TITLE_PERM_GUESS = "Permeability field (mD) - initial guess"
 
 const ZONING_TECHNIQUES = Dict(
     "sign_uncons" => (
@@ -173,7 +159,7 @@ rate_obs = build_rate_observations(
     bhp_weight     = bhp_weight,
 )
 set_rate_observations!(LOSS_REGISTRY, rate_obs)
-history_matching_loss = loss_from_registry(LOSS_REGISTRY; mode = loss_mode)
+history_matching_loss = loss_from_registry(LOSS_REGISTRY; mode = :rates)
 
 # --- Zonation configuration ---
 
@@ -298,10 +284,10 @@ ref_idx = _resolve_refinement(REF_IDX_TO_PLOT, last_refinement)
 ref_label = history.labels[ref_idx]
 ref_nzones = length(history.mults[ref_idx])
 
-plot_epoch_gradients!(mesh, grads, label) = show_epoch_gradients(mesh, grads, label; colormap = COLORMAP_GRAD)
+plot_epoch_gradients!(mesh, grads, label) = show_epoch_gradients(mesh, grads, label; colormap = :balance)
 plot_multipliers_line!(mults, title) = show_multipliers_line(mults; title = title, ylabel = MULTS_LINE_YLABEL)
-plot_multipliers_3d!(mesh, field, title) = show_multipliers_3d(mesh, field; colormap = COLORMAP_MULTS_3D, title = title, colorbar_label = MULTS_COLORBAR_LABEL, colorrange = MULTS_COLORRANGE)
-plot_perm_3d!(mesh, field, title) = show_perm_3d(mesh, field; units = :mD, colormap = COLORMAP_MULTS, title = title, colorrange = PERM_COLORRANGE)
+plot_multipliers_3d!(mesh, field, title) = show_multipliers_3d(mesh, field; colormap = cgrad(:Spectral, 256, rev = true), title = title, colorbar_label = MULTS_COLORBAR_LABEL, colorrange = MULTS_COLORRANGE)
+plot_perm_3d!(mesh, field, title) = show_perm_3d(mesh, field; units = :mD, colormap = :viridis, title = title, colorrange = PERM_COLORRANGE)
 plot_loss_history!(losses, labels) = show_loss_history(losses, labels)
 plot_rate_comparison!(t_truth, t_matched, curves) = show_rate_comparison(t_truth, t_matched, curves; label = RATE_COMPARE_LABEL)
 plot_lbfgs_sections!(log_file, history) = begin
@@ -325,13 +311,13 @@ plot_lbfgs_sections!(log_file, history) = begin
     show_lbfgs_sections(lbfgs_sections_clean; first_refinement = LBFGS_FIRST_REFINEMENT_TO_PLOT, last_refinement = LBFGS_LAST_REFINEMENT_TO_PLOT)
 end
 
-plot_epoch_gradients!(rmesh, history.grads[ref_idx], _fmt(LABEL_ZONES_TEMPLATE, ref_label, ref_nzones))
-plot_multipliers_line!(history.mults[ref_idx], _fmt(TITLE_MULTS_PER_ZONE_TEMPLATE, ref_label, ref_nzones))
-plot_multipliers_3d!(rmesh, multiplier_field_for_refinement(history, ref_idx), _fmt(TITLE_MULTS_PER_CELL_TEMPLATE, ref_label, ref_nzones))
-plot_perm_3d!(rmesh, perm_field_for_refinement(ref_idx; perm_args...), _fmt(TITLE_PERM_TEMPLATE, ref_label))
+plot_epoch_gradients!(rmesh, history.grads[ref_idx], _fmt("%s (%d zones)", ref_label, ref_nzones))
+plot_multipliers_line!(history.mults[ref_idx], _fmt("Multipliers per zone — %s (%d zones)", ref_label, ref_nzones))
+plot_multipliers_3d!(rmesh, multiplier_field_for_refinement(history, ref_idx), _fmt("Multipliers per cell — %s (%d zones)", ref_label, ref_nzones))
+plot_perm_3d!(rmesh, perm_field_for_refinement(ref_idx; perm_args...), _fmt("Permeability field (mD) - %s", ref_label))
 plot_loss_history!(history.losses, history.labels)
-plot_perm_3d!(rmesh, perm_field(:truth; perm_args...), TITLE_PERM_TRUTH)
-plot_perm_3d!(rmesh, perm_field(:guess; perm_args...), TITLE_PERM_GUESS)
-plot_perm_3d!(rmesh, perm_field(:final; perm_args...), _fmt(TITLE_PERM_TEMPLATE, history.labels[end]))
+plot_perm_3d!(rmesh, perm_field(:truth; perm_args...), "Permeability field (mD) - truth")
+plot_perm_3d!(rmesh, perm_field(:guess; perm_args...), "Permeability field (mD) - initial guess")
+plot_perm_3d!(rmesh, perm_field(:final; perm_args...), _fmt("Permeability field (mD) - %s", history.labels[end]))
 plot_lbfgs_sections!(LBFGS_LOG_FILE, history)
 plot_rate_comparison!(time_truth, time_matched, curves)

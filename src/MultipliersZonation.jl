@@ -1,6 +1,5 @@
 module MultipliersZonation
 
-export dummy_refine!
 export gradient_sign_refine!
 export gradient_sign_targeted_refine!
 export gradient_median_refine_all!

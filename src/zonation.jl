@@ -1,12 +1,6 @@
 using Statistics
 using Clustering: hclust, cutree
 
-function dummy_refine!(mults, zonation, rmesh, K_grads, mults_grads, refinement_step)
-    append!(mults, mults[end])
-    zonation = map(c -> min(refinement_step, cell_ijk(rmesh, c)[3]), 1:number_of_cells(rmesh))
-    return zonation
-end
-
 """
     gradient_sign_refine!(mults, zonation, K_grads; zero_tolerance = 0.0)
 

@@ -15,9 +15,6 @@ const COLORMAP_GRAD  = :balance
 const COLORMAP_MULTS = :viridis
 
 const SPE1_WELLS = [:PROD, :INJ]
-const loss_mode = :rates
-const scale_mode = :auto_rms
-const bhp_scale_mode = :auto
 
 const SPE1_RATE_REL_FLOOR = 1e-2
 const rate_weight = 1.0
@@ -90,7 +87,7 @@ rate_obs = build_rate_observations(
 )
 set_rate_observations!(LOSS_REGISTRY, rate_obs)
 
-history_matching_loss = loss_from_registry(LOSS_REGISTRY; mode = loss_mode)
+history_matching_loss = loss_from_registry(LOSS_REGISTRY; mode = :rates)
 
 # Original model: takes permeability directly
 function model(prm, step_info = missing)
