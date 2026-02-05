@@ -10,7 +10,7 @@ using GLMakie
 # --- 3D visualization ---
 GLMakie.activate!()
 
-# --- palette and symmetric scale ---
+# --- Controls ---
 const COLORMAP_GRAD  = :balance
 const COLORMAP_MULTS = :viridis
 
@@ -27,8 +27,31 @@ const bhp_weight = rate_weight
 const MIN_MULTIPLIER = 5e-2
 const MAX_MULTIPLIER = 1.5
 
+const K_first_layer  = 500.0
+const K_second_layer = 50.0
+const K_third_layer  = 200.0
+
+const K_first_layer_guess  = 750.0
+const K_second_layer_guess = 200.0
+const K_third_layer_guess  = 1000.0
+
+const LBFGS_MAX_IT = 150
+const LBFGS_STEP_INIT = 1e-2
+const LBFGS_MAX_INITIAL_UPDATE = 5e-2
+
 const REFINEMENT_NAME = "L-BFGS per-cell perm (no zonation)"
 const SPE1_ZONE_RATE_CURVES_FILE = joinpath(@__DIR__, "logs", "spe1_zone_rate_curves.csv")
+const NO_ZONE_PERM_INC_FILE = joinpath(@__DIR__, "..", "models", "inc", "spe1_no_zone_perm.inc")
+const PERM_INC_HEADER_LINES = [
+    "-- SPE1 permeability tuned with per-cell L-BFGS (no zonation)",
+    "-- Units: milliDarcy, order = I fastest, then J, then K",
+]
+const LBFGS_FINAL_LABEL = "L-BFGS final"
+const RATE_COMPARE_LABEL = "SPE1 — L-BFGS (no zonation)"
+const RATE_COMPARE_LABEL_NO_ZONE = "No zonation"
+const RATE_COMPARE_LABEL_ZONATION = "Zonation"
+const PERM_TITLE_TEMPLATE = "Permeability field (mD) — %s"
+const PERM_TITLE_FINAL = "Permeability field (mD) — L-BFGS per-cell perm"
 
 # Backward-compatible wrapper: tolerate older compute_auto_scales signatures
 _auto_scales(ws, wells; method = :rms) = try
@@ -48,14 +71,6 @@ ws     = result.wells
 rmesh = physical_representation(reservoir_domain(case_truth.model))
 step_times = cumsum(case_truth.dt)
 total_time = step_times[end]
-
-K_first_layer  = 500.0
-K_second_layer = 50.0
-K_third_layer  = 200.0
-
-K_first_layer_guess  = 750.0
-K_second_layer_guess = 200.0
-K_third_layer_guess  = 1000.0
 
 rate_scales, bhp_scale = _auto_scales(ws, SPE1_WELLS; method = :rms)
 
@@ -146,9 +161,9 @@ free_optimization_parameter!(
 mults_tuned = optimize_reservoir(
     dopt,
     history_matching_loss;
-    max_it             = 150,
-    step_init          = 1e-2,
-    max_initial_update = 5e-2,
+    max_it             = LBFGS_MAX_IT,
+    step_init          = LBFGS_STEP_INIT,
+    max_initial_update = LBFGS_MAX_INITIAL_UPDATE,
 )
 
 log_lbfgs_history(
@@ -156,7 +171,7 @@ log_lbfgs_history(
     grad_tol           = LBFGS_DEFAULTS.grad_tol,
     obj_change_tol     = LBFGS_DEFAULTS.obj_change_tol,
     obj_change_tol_rel = LBFGS_DEFAULTS.obj_change_tol_rel,
-    max_it           = 150,
+    max_it           = LBFGS_MAX_IT,
 )
 
 # Optimised multipliers and resulting permeability
@@ -166,15 +181,11 @@ perm_opt_SI    = base_perm_vec .* mults[zonation]
 final_perm_SI  = reshape(perm_opt_SI, sz)
 final_perm_mD  = final_perm_SI .* md_per_SI
 
-no_zone_perm_inc_file = joinpath(@__DIR__, "..", "models", "inc", "spe1_no_zone_perm.inc")
 write_permeability_inc(
-    no_zone_perm_inc_file;
+    NO_ZONE_PERM_INC_FILE;
     permx = final_perm_mD,
     permy = final_perm_mD,
-    header_lines = [
-        "-- SPE1 permeability tuned with per-cell L-BFGS (no zonation)",
-        "-- Units: milliDarcy, order = I fastest, then J, then K",
-    ],
+    header_lines = PERM_INC_HEADER_LINES,
 )
 
 prm_final = Dict("perm" => perm_opt_SI)
@@ -197,7 +208,7 @@ loss_final, K_grads, mults_grads = redirect_stdout(devnull) do
     end
 end
 
-label_final = "L-BFGS final"
+label_final = LBFGS_FINAL_LABEL
 log_refinement!(history, K_grads, mults, zonation, label_final, loss_final)
 
 # ------------------ VISUALIZATION ------------------
@@ -225,42 +236,16 @@ show_perm_3d(
     );
     units = :mD,
     colormap = COLORMAP_MULTS,
-    title = @sprintf("Permeability field (mD) — %s", history.labels[last_epoch]),
+    title = @sprintf(PERM_TITLE_TEMPLATE, history.labels[last_epoch]),
 )
 show_perm_3d(
     rmesh,
     final_perm_mD;
     units = :mD,
     colormap = COLORMAP_MULTS,
-    title = "Permeability field (mD) — L-BFGS per-cell perm",
+    title = PERM_TITLE_FINAL,
 )
 
-# quick one-off log-scale plot of LBFGS loss per iteration
-lbfgs_iter_indices = 0:10
-lbfgs_iter_losses = [
-    604255.7605190848,
-    68907.4491452643,
-    66473.41922833382,
-    62895.417107781126,
-    60042.950430383404,
-    59930.01938879271,
-    59929.48402793784,
-    59928.788021837994,
-    59928.773701765545,
-    59928.77012084912,
-    59928.77012084912,
-]
-
-fig_lbfgs = Figure()
-ax_lbfgs = Axis(fig_lbfgs[1, 1];
-    xlabel = "LBFGS iteration",
-    ylabel = "Loss",
-    title  = "Loss per iteration — L-BFGS (no zonation)",
-    yscale = Makie.log10,
-)
-lines!(ax_lbfgs, lbfgs_iter_indices, lbfgs_iter_losses; linewidth = 2)
-scatter!(ax_lbfgs, lbfgs_iter_indices, lbfgs_iter_losses; markersize = 10)
-display(fig_lbfgs)
 
 wells_truth_dict = wells_dict(well_results_truth)
 wells_matched_dict = wells_dict(well_results_matched)
@@ -270,7 +255,7 @@ show_rate_comparison(
     time_truth,
     time_matched,
     curves_no_zone;
-    label = "SPE1 — L-BFGS (no zonation)",
+    label = RATE_COMPARE_LABEL,
 )
 
 zonation_data = load_zonation_rate_curves(SPE1_ZONE_RATE_CURVES_FILE)
@@ -281,7 +266,7 @@ else
         time_truth,
         curves_no_zone,
         zonation_data;
-        label_no_zone = "No zonation",
-        label_zonation = "Zonation",
+        label_no_zone = RATE_COMPARE_LABEL_NO_ZONE,
+        label_zonation = RATE_COMPARE_LABEL_ZONATION,
     )
 end

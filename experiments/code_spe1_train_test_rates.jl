@@ -54,7 +54,7 @@ for (label, deck_path) in DECKS
     ))
 end
 
-# show only gas rate
+# show gas, oil, water rate (grat, orat, wrat)
 show_train_test_rate_comparison(runs; train_years = TRAIN_YEARS, qois = (:wrat,), show_labels = SHOW_LABELS)
-# show only PROD BHP
+# show production and injection BHP (bhp_prod, bhp_inj)
 show_train_test_rate_comparison(runs; train_years = TRAIN_YEARS, qois = (:bhp_inj,), show_labels = SHOW_LABELS)
