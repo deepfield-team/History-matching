@@ -25,7 +25,7 @@ const bhp_weight = rate_weight
 
 # Multipliers bounds (relative)
 const MIN_MULTIPLIER = 5e-2
-const MAX_MULTIPLIER = 5.0
+const MAX_MULTIPLIER = 1.5
 
 const REFINEMENT_NAME = "L-BFGS per-cell perm (no zonation)"
 const SPE1_ZONE_RATE_CURVES_FILE = joinpath(@__DIR__, "logs", "spe1_zone_rate_curves.csv")
@@ -146,7 +146,7 @@ free_optimization_parameter!(
 mults_tuned = optimize_reservoir(
     dopt,
     history_matching_loss;
-    max_it             = 30,
+    max_it             = 150,
     step_init          = 1e-2,
     max_initial_update = 5e-2,
 )
@@ -156,7 +156,7 @@ log_lbfgs_history(
     grad_tol           = LBFGS_DEFAULTS.grad_tol,
     obj_change_tol     = LBFGS_DEFAULTS.obj_change_tol,
     obj_change_tol_rel = LBFGS_DEFAULTS.obj_change_tol_rel,
-    max_it           = 30,
+    max_it           = 150,
 )
 
 # Optimised multipliers and resulting permeability
@@ -285,8 +285,3 @@ else
         label_zonation = "Zonation",
     )
 end
-
-#TODO
-#The unnececary plotting of rates < saivng of rates, and loging of loss function, make it more consistence in term of 
-#moving it into functions and modules in another file in src and make it callable from here 
-#and flexible for use on every model
