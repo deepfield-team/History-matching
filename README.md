@@ -10,10 +10,14 @@ This repository is the companion codebase for our paper "Multipliers Zonation fo
 
 ## Visual Overview
 ### How the model is divided into zones
-![Zone division over refinement](pics/division.gif)
+<p align="center">
+   <img src="pics/division.gif" alt="Zone division over refinement" width="600">
+</p>
 
 ### Rates and BHP comparison across zoning strategies
-![Image #1: Rates and BHP comparison for different zoning methods and no-zoning baseline](pics/compare_plot.png)
+<p align="center">
+   <img src="pics/compare_plot.png" alt="Image #1: Rates and BHP comparison" width="600">
+</p>
 
 ## Installation
 ### Supported Software Versions
