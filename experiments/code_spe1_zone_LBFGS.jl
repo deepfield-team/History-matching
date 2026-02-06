@@ -10,7 +10,7 @@ GLMakie.activate!()
 # --- Controls ---
 const SPE1_WELLS = [:PROD, :INJ]
 
-const N_REFINEMENTS = 4
+const N_REFINEMENTS = 10
 const LBFGS_MAX_ITERS = 40
 
 const ZONING_TECHNIQUE_KEY = "sign_uncons"

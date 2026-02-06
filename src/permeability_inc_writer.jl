@@ -26,7 +26,10 @@ function write_permeability_inc(
 
     size(permy) == size(permx) ||
         throw(ArgumentError("size(permy) mismatches size(permx)"))
+    values_per_line > 0 ||
+        throw(ArgumentError("values_per_line must be positive"))
 
+    mkpath(dirname(path))
     open(path, "w") do io
         for line in header_lines
             println(io, line)

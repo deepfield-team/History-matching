@@ -21,10 +21,6 @@ const K_first_layer_guess  = 750.0
 const K_second_layer_guess = 200.0
 const K_third_layer_guess  = 1000.0
 
-const LBFGS_MAX_IT = 150
-const LBFGS_STEP_INIT = 1e-2
-const LBFGS_MAX_INITIAL_UPDATE = 5e-2
-
 const REFINEMENT_NAME = "L-BFGS per-cell perm (no zonation)"
 const SPE1_ZONE_RATE_CURVES_FILE = joinpath(@__DIR__, "logs", "spe1_zone_rate_curves.csv")
 const NO_ZONE_PERM_INC_FILE = joinpath(@__DIR__, "..", "models", "inc", "spe1_no_zone_perm.inc")
@@ -141,9 +137,6 @@ free_optimization_parameter!(
 mults_tuned = optimize_reservoir(
     dopt,
     history_matching_loss;
-    max_it             = LBFGS_MAX_IT,
-    step_init          = LBFGS_STEP_INIT,
-    max_initial_update = LBFGS_MAX_INITIAL_UPDATE,
 )
 
 log_lbfgs_history(
@@ -151,7 +144,6 @@ log_lbfgs_history(
     grad_tol           = LBFGS_DEFAULTS.grad_tol,
     obj_change_tol     = LBFGS_DEFAULTS.obj_change_tol,
     obj_change_tol_rel = LBFGS_DEFAULTS.obj_change_tol_rel,
-    max_it           = LBFGS_MAX_IT,
 )
 
 # Optimised multipliers and resulting permeability
