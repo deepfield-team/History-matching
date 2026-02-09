@@ -1,0 +1,11 @@
+### `src/` (library code)
+- `src/MultipliersZonation.jl`: module entry point, exports, and file includes.
+- `src/loss_functions.jl`: mismatch definitions, observation builders, and auto scaling utilities.
+- `src/zonation.jl`: zonation refinement strategies (sign-, median-, and clustering-based).
+- `src/optimization.jl`: permeability gradient to multiplier gradient mapping.
+- `src/workflows.jl`: refinement loop, optimization orchestration, history logging, field reconstruction helpers.
+- `src/rate_curves.jl`: well aggregation utilities and loading of saved rate curves.
+- `src/lbfgs_logs.jl`: parser for LBFGS log files and refinement sections.
+- `src/decks.jl`: helper to run a deck and return standardized outputs.
+- `src/permeability_inc_writer.jl`: writer for Eclipse-style `PERMX/PERMY` include files.
+- `src/plotting.jl`: visualization helpers for 3D fields, losses, and rate comparisons.
